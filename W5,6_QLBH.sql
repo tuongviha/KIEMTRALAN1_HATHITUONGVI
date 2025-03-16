@@ -151,6 +151,13 @@ GO
 INSERT INTO Orders (CustomerID, EmployeeID, OrderDate, RequiredDate, ShippedDate, ShipVia, Freight, ShipName, ShipAddress, ShipCity, ShipRegion, ShipPostalCode, ShipCountry)
 VALUES 
 ('C001', 1, '1996-07-15', '1996-07-20', '1996-07-16', 1, 5.00, 'Alice Johnson', '123 Main St', 'New York', NULL, '10001', 'USA');
+INSERT INTO Orders (CustomerID, EmployeeID, OrderDate, RequiredDate, ShippedDate, ShipVia, Freight, ShipName, ShipAddress, ShipCity, ShipRegion, ShipPostalCode, ShipCountry)
+VALUES 
+('C001', 1, '1997-07-01', '1997-07-05', NULL, 1, 5.00, 'Alice Johnson', '123 Main St', 'New York', NULL, '10001', 'USA'),
+('C002', 1, '1997-07-02', '1997-07-06', NULL, 1, 10.00, 'Bob Brown', '456 Elm St', 'Los Angeles', NULL, '90001', 'USA'),
+('C003', 2, '1997-07-03', '1997-07-07', NULL, 2, 7.50, 'Charlie Green', '789 Pine St', 'Paris', NULL, '75001', 'France'),
+('C004', 2, '1997-07-04', '1997-07-08', NULL, 2, 12.00, 'Diana Prince', '321 Oak St', 'Lyon', NULL, '69001', 'France');
+Go 
 ---- Tạo bảng Order_Details 
 CREATE TABLE Order_Details 
 (
@@ -235,10 +242,8 @@ ORDER BY MONTH(OrderDate);
 --- Câu 15
 SELECT OrderID, OrderDate, CustomerID, EmployeeID,
     DATEPART(WEEKDAY, OrderDate) AS WeekDayOfOrderDate 
-FROM 
-    Orders 
-WHERE 
-    OrderDate >= '1997-12-01' AND OrderDate < '1998-01-01' 
+FROM Orders 
+WHERE OrderDate >= '1997-12-01' AND OrderDate < '1998-01-01' 
     AND (DATEPART(WEEKDAY, OrderDate) = 7 OR DATEPART(WEEKDAY, OrderDate) = 1); 
 --- Câu 16
 SELECT ProductID, ProductName, UnitPrice, (UnitsInStock * UnitPrice) AS TotalAccount 
@@ -262,65 +267,146 @@ FROM Order_Details od;
 
 ----------------TUẦN 6-----------------------------------------------
 ---- Câu 1
-SELECT 
-    c.CustomerID, 
-    c.CompanyName, 
-    c.Address, 
-    o.OrderID, 
-    o.OrderDate 
-FROM 
-    Customers c
-JOIN 
-    Orders o ON c.CustomerID = o.CustomerID
-WHERE 
-    o.OrderDate >= '1997-07-01' AND o.OrderDate < '1997-08-01'
-ORDER BY 
-    c.CustomerID, 
-    o.OrderDate DESC;
+SELECT c.CustomerID, c.CompanyName, c.Address, o.OrderID, o.OrderDate 
+FROM Customers c
+JOIN Orders o ON c.CustomerID = o.CustomerID
+WHERE o.OrderDate >= '1997-07-01' AND o.OrderDate < '1997-08-01'
+ORDER BY c.CustomerID, o.OrderDate DESC;
+
 --- Câu 2
-SELECT 
-    c.CustomerID, 
-    c.CompanyName, 
-    c.Address, 
-    o.OrderID, 
-    o.OrderDate 
-FROM 
-    Customers c
-JOIN 
-    Orders o ON c.CustomerID = o.CustomerID
-WHERE 
-    o.OrderDate >= '1997-07-01' AND o.OrderDate < '1997-07-30'
-ORDER BY 
-    c.CustomerID, 
-    o.OrderDate;
+SELECT c.CustomerID, c.CompanyName, c.Address, o.OrderID, o.OrderDate 
+FROM Customers c
+JOIN Orders o ON c.CustomerID = o.CustomerID
+WHERE o.OrderDate >= '1997-07-01' AND o.OrderDate < '1997-07-30'
+ORDER BY c.CustomerID, o.OrderDate;
+
 --- Câu 3
-SELECT 
-    p.ProductID, 
-    p.ProductName, 
-    od.Quantity, 
-    od.UnitPrice, 
-    od.Discount 
-FROM 
-    Orders
-JOIN 
-    Order_Details od ON o.OrderID = od.OrderID
-JOIN 
-    Products p ON od.ProductID = p.ProductID
-WHERE 
-    o.ShippedDate = '1996-07-12';
+SELECT p.ProductID, p.ProductName,
+    SUM(od.Quantity) AS CountOfOrders  
+FROM Products p
+JOIN Order_Details od ON p.ProductID = od.ProductID
+GROUP BY p.ProductID, p.ProductName  
+ORDER BY CountOfOrders DESC;  
+
 --- Câu 4
-SELECT 
-    o.OrderID, 
-    c.CompanyName, 
-    o.OrderDate, 
-    o.RequiredDate 
-FROM 
-    Orders
-JOIN 
-    Customers c ON o.CustomerID = c.CustomerID
-WHERE 
-    (MONTH(o.OrderDate) = 4 OR MONTH(o.OrderDate) = 9) 
-    AND YEAR(o.OrderDate) = 1997
+SELECT c.CustomerID, c.CompanyName,
+    COUNT(o.OrderID) AS CountOfOrder
+FROM Customers c
+LEFT JOIN Orders o ON c.CustomerID = o.CustomerID
+GROUP BY c.CustomerID, c.CompanyName
+ORDER BY CountOfOrder DESC;
+
+---- Câu 5
+SELECT e.EmployeeID, e.FirstName, e.LastName,
+    COUNT(o.OrderID) AS CountOfOrders,
+    SUM(od.UnitPrice * od.Quantity * (1 - od.Discount)) AS TotalAmount
+FROM Employees e
+LEFT JOIN Orders o ON e.EmployeeID = o.EmployeeID
+LEFT JOIN Order_Details od ON o.OrderID = od.OrderID
+GROUP BY e.EmployeeID, e.FirstName, e.LastName
+ORDER BY CountOfOrders DESC;
+
+--- Câu 6
+SELECT e.EmployeeID, CONCAT(e.FirstName, ' ', e.LastName) AS EmployeeName,
+FORMAT(o.OrderDate, 'yyyy-MM') AS Month_Salary,
+SUM(od.Quantity * od.UnitPrice) * 0.10 AS Salary
+FROM Employees e
+JOIN Orders o ON e.EmployeeID = o.EmployeeID
+JOIN Order_Details od ON o.OrderID = od.OrderID
+WHERE YEAR(o.OrderDate) = 1996
+GROUP BY e.EmployeeID, e.FirstName, e.LastName, FORMAT(o.OrderDate, 'yyyy-MM')
 ORDER BY 
-    c.CompanyName, 
-    o.OrderDate DESC;
+    Month_Salary, Salary DESC;
+
+--- Câu 7
+SELECT c.CustomerID, c.CompanyName, SUM(od.Quantity * od.UnitPrice * (1 - od.Discount)) AS TotalAmount
+FROM Customers c
+JOIN Orders o ON c.CustomerID = o.CustomerID
+JOIN Order_Details od ON o.OrderID = od.OrderID
+WHERE o.OrderDate >= '1996-01-01' AND o.OrderDate <= '1998-01-01'  
+GROUP BY c.CustomerID, c.CompanyName
+HAVING SUM(od.Quantity * od.UnitPrice * (1 - od.Discount)) > 2.0  
+ORDER BY TotalAmount DESC;  
+
+---- Câu 8
+SELECT 
+    c.CustomerID,
+    c.CompanyName,
+    COUNT(o.OrderID) AS TotalOrders,  
+    SUM(od.Quantity * od.UnitPrice * (1 - od.Discount)) AS TotalAmount  
+FROM Customers c
+JOIN Orders o ON c.CustomerID = o.CustomerID
+JOIN Order_Details od ON o.OrderID = od.OrderID
+WHERE o.OrderDate >= '1996-12-31' AND o.OrderDate <= '1998-01-01' 
+GROUP BY c.CustomerID, c.CompanyName
+HAVING SUM(od.Quantity * od.UnitPrice * (1 - od.Discount)) > 2.0  
+ORDER BY c.CustomerID, TotalAmount DESC;  
+
+---- Câu 9 
+SELECT p.CategoryID,
+    COUNT(*) AS Total_UnitsInStock,  
+    AVG(p.UnitPrice) AS Average_UnitPrice  
+FROM Products p
+GROUP BY p.CategoryID
+HAVING SUM(p.UnitsInStock) > 300 AND AVG(p.UnitPrice) < 25  
+ORDER BY p.CategoryID;  
+
+--- Câu 10
+SELECT p.CategoryID,
+    COUNT(p.ProductID) AS TotalOfProducts  
+FROM Products p
+GROUP BY p.CategoryID
+HAVING COUNT(p.ProductID) < 10 
+ORDER BY p.CategoryID;  
+--- Câu 11
+SELECT p.ProductID, p.ProductName,
+    SUM(od.Quantity) AS SumofQuantity 
+FROM Products p
+JOIN Order_Details od ON p.ProductID = od.ProductID
+JOIN Orders o ON od.OrderID = o.OrderID
+WHERE o.OrderDate >= '1996-01-01' AND o.OrderDate <= '1998-03-31' 
+GROUP BY p.ProductID, p.ProductName
+HAVING SUM(od.Quantity) > 2  
+ORDER BY p.ProductID;
+
+--- Câu 12
+SELECT c.CustomerID, c.CompanyName,
+    FORMAT(o.OrderDate, 'yyyy-MM') AS Month_Year,
+    SUM(od.UnitPrice * od.Quantity) AS Total 
+FROM Customers c
+JOIN Orders o ON c.CustomerID = o.CustomerID
+JOIN Order_Details od ON o.OrderID = od.OrderID
+GROUP BY c.CustomerID, c.CompanyName, FORMAT(o.OrderDate, 'yyyy-MM')  
+ORDER BY c.CustomerID, Month_Year;
+
+---- Câu 13
+SELECT e.EmployeeID, e.FirstName,e.LastName,
+    COALESCE(SUM(od.UnitPrice * od.Quantity), 0) AS TotalSales
+FROM Employees e
+LEFT JOIN Orders o ON e.EmployeeID = o.EmployeeID 
+	AND MONTH(o.OrderDate) = 7 AND YEAR(o.OrderDate) = 1997
+LEFT JOIN Order_Details od ON o.OrderID = od.OrderID
+GROUP BY e.EmployeeID, e.FirstName, e.LastName
+ORDER BY TotalSales DESC;  
+
+---- Câu 14
+SELECT c.CustomerID, c.CompanyName,
+    COUNT(o.OrderID) AS TotalOrders 
+FROM Customers c
+JOIN Orders o ON c.CustomerID = o.CustomerID
+WHERE YEAR(o.OrderDate) = 1996 
+GROUP BY c.CustomerID, c.CompanyName
+ORDER BY TotalOrders DESC  
+OFFSET 0 ROWS FETCH NEXT 3 ROWS ONLY;  
+
+--- Câu 15
+SELECT e.EmployeeID, e.LastName, e.FirstName,
+    COUNT(o.OrderID) AS CountOfOrderID,  
+    SUM(od.UnitPrice * od.Quantity) AS SumOfTotal 
+FROM Employees e
+JOIN Orders o ON e.EmployeeID = o.EmployeeID
+JOIN Order_Details od ON o.OrderID = od.OrderID
+WHERE o.OrderDate >= '1997-01-01' AND o.OrderDate < '1997-12-01' 
+GROUP BY e.EmployeeID, e.LastName, e.FirstName
+HAVING SUM(od.UnitPrice * od.Quantity) > 4  
+ORDER BY e.EmployeeID;
